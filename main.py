@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS favorite (
 )
 ''')
 
-API_TOKEN = '6986591700:AAF09IXA7OintoNq04QdnmQwoX3-LlaazZs'  # Замените 'api' на ваш реальный API токен
+API_TOKEN = 'api'  # Замените 'api' на ваш реальный API токен
 
 bot = telebot.TeleBot(API_TOKEN)  # Создаем объект бота
 

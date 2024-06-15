@@ -1,8 +1,11 @@
 import telebot  # Импортируем библиотеку telebot для работы с Telegram API
-from telebot import types
-
+from telebot import types #красивы кнопочки :)
+from gtts import gTTS #аудио конвертор статей
 import wikipedia  # Импортируем библиотеку wikipedia для работы с Википедией
 import sqlite3 # загрузка базы данных
+import os # работа с операционноя системой
+from g4f.client import Client #нейросеть
+from googletrans import Translator # переводчик для нейросети для лучшего качетсва ответа
 
 # Соединяемся с базой данных
 conn = sqlite3.connect('main.db')
@@ -26,10 +29,26 @@ CREATE TABLE IF NOT EXISTS favorite (
 )
 ''')
 
-API_TOKEN = 'api'  # Замените 'api' на ваш реальный API токен
+API_TOKEN = '6986591700:AAF09IXA7OintoNq04QdnmQwoX3-LlaazZs'  # Замените 'api' на ваш реальный API токен
 
 bot = telebot.TeleBot(API_TOKEN)  # Создаем объект бота
 
+@bot.message_handler(commands=["ai_search"])
+def ai_help(message):
+    bot.reply_to(message, "Вас приветствует ИИ! Опишите, про что была статья")
+    bot.register_next_step_handler(message,ai_search)
+def ai_search(message):
+    ask = message.text
+    translator = Translator()
+    translation = translator.translate(ask, dest='en')
+    ask = translation.text
+    bot.reply_to(message,"подождите бот думает")
+    client = Client()
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[{"role": "user", "content": f"hi find article on wikipedia about {ask}"}],
+    )
+    bot.reply_to(message,translator.translate(response.choices[0].message.content, dest='ru').text)
 # Обработчик команды /start
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
@@ -38,7 +57,7 @@ def send_welcome(message):
 # Обработчик команды /help
 @bot.message_handler(commands=['help'])
 def send_help(message):
-    bot.reply_to(message, "Список команд:\n/search - поиск\n/login - для изменения своего аккаунта\n/help - для вывода всех команд\n/favorite любимые статьи")
+    bot.reply_to(message, "Список команд:\n/search - поиск\n/login - для изменения своего аккаунта\n/help - для вывода всех команд\n/favorite любимые статьи\n/ai_search поиск с помщью ИИ \n/audio_search преобразует стати в аудио")
 
 # Обработчик команды /search
 @bot.message_handler(commands=['search'])
@@ -89,7 +108,15 @@ def process_article(message):
                 for i in range(max // 4096): # из за ограничения 4096 сиволов делим её на чати
                     short_content = article.content[start:value]
                     title = article.title
-                    bot.reply_to(message, short_content)
+                    status = True
+                    if status == True:
+                        tts = gTTS(short_content)
+                        tts.save(f'{user_id}.mp3')
+                        with open(f'{user_id}.mp3', 'rb') as audio:
+                            bot.send_audio(message.chat.id, audio)
+                        os.remove(f'{user_id}.mp3')
+                    elif status == False:
+                        bot.reply_to(message, short_content)
                     start += 4096
                     value += 4096
                 # Send the remaining content as a separate message
@@ -112,7 +139,7 @@ def process_article(message):
         bot.register_next_step_handler(message, favorite_varificate, title)
 
     except Exception as e:  # Обработка исключений
-        bot.reply_to(message, "Не удалось найти статью")  # Сообщаем пользователю об ошибке
+        bot.reply_to(message, f"Не удалось найти статью")  # Сообщаем пользователю об ошибке
 
 def favorite_varificate(message,title): # проверка хочет ли человека добавить в любимые
     if message.text == "да":
@@ -201,5 +228,27 @@ def remove_favorite(message):
     conn.commit()
     c.close()
     bot.reply_to(message, "операция прошла успешно")
+
+bot.message_handler(commands=["audio_seacrh"])
+def search_article(message):
+    bot.reply_to(message,"введите название статьий")
+    bot.register_next_step_handler(message, remove_favorite)
+def audio_create(message):
+    user_id = message.from_user.id
+    article = wikipedia.page(message.text)  # Получаем полную статью
+    value = 4096
+    start = 0
+    max = len(article.content)
+    if max > 4096:
+        for i in range(max // 4096):  # из за ограничения 4096 сиволов делим её на части
+            bot.reply_to(message,"внимание операция может занять от пары до 30 минут!")
+            short_content = article.content[start:value]
+            tts = gTTS(short_content)
+            tts.save(f'{user_id}.mp3')
+            with open(f'{user_id}.mp3', 'rb') as audio:
+                bot.send_audio(message.chat.id, audio)
+            os.remove(f'{user_id}.mp3')
+            start += 4096
+            value += 4096
 
 bot.infinity_polling()  # Запуск бесконечного цикла для обработки сообщений

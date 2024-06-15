@@ -12,7 +12,7 @@
 
 Требования                                                     тг бот  википедия  база данных  ИИ  аудио гугл переводчик
 Python 3.x                                                         |         |        |        |     |      |
-Установите необходимые библиотеки, выполнив команду: pip install telebot  wikipedia  sqlite3   g4f  gtts googletrans-x
+Установите необходимые библиотеки, выполнив команду: pip install telebot  wikipedia  sqlite3   g4f  gtts googletrans==4.0.0-rc1
 Замените API_TOKEN на свой токен API Telegram
 Запустите бота, выполнив команду: python bot.py
 по жаланию: создадите папку для аудио файлов
